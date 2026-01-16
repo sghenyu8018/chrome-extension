@@ -1,0 +1,35 @@
+# Node modules (if used)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+
+# Chrome extension files (don't ignore, but note)
+# These should be committed:
+# - manifest.json
+# - background.js
+# - content.js
+# - popup/
+# - utils/
+# - lib/
+
+# But ignore large binary files that shouldn't be in repo
+# (if any are added later)

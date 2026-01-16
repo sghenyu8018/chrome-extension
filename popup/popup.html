@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抖音达人信息采集器</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>🎯 达人信息采集器</h1>
+      <div class="stats" id="stats">
+        <div class="stat-item">
+          <span class="stat-label">达人</span>
+          <span class="stat-value" id="creatorCount">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">作品</span>
+          <span class="stat-value" id="videoCount">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">粉丝</span>
+          <span class="stat-value" id="followerCount">0</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="搜索达人名称或简介...">
+      <button id="searchBtn">🔍</button>
+      <button id="refreshBtn" title="刷新">🔄</button>
+      <button id="exportBtn" title="导出数据">📥</button>
+    </div>
+
+    <div class="creators-list" id="creatorsList">
+      <div class="loading" id="loading">加载中...</div>
+    </div>
+
+    <div class="footer">
+      <button id="clearBtn" class="danger-btn">清空数据库</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
