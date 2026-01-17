@@ -37,42 +37,60 @@ function loadScraper() {
       console.log('[Content Script] scraper.js脚本加载完成');
       scraperLoaded = true;
       
-      // 等待scraper对象创建（检查多个可能的全局位置）
-      const checkScraper = setInterval(() => {
+      // 脚本加载完成后，scraper应该已经立即创建并挂载到window
+      // 使用setTimeout确保脚本执行完成
+      setTimeout(() => {
         const elapsed = Date.now() - checkStartTime;
-        const hasScraper = typeof scraper !== 'undefined' || typeof window.scraper !== 'undefined';
         
-        if (hasScraper) {
-          const actualScraper = window.scraper || scraper;
+        // 优先检查window.scraper（这是主要的挂载位置）
+        if (typeof window.scraper !== 'undefined' && window.scraper) {
           console.log('[Content Script] Scraper对象已创建，耗时:', elapsed + 'ms', {
-            type: typeof actualScraper,
-            location: window.scraper ? 'window.scraper' : 'scraper'
+            type: typeof window.scraper,
+            hasCollectCreatorData: typeof window.scraper.collectCreatorData === 'function',
+            location: 'window.scraper'
           });
-          clearInterval(checkScraper);
           resolve();
-        } else if (elapsed > timeout) {
-          console.error('[Content Script] Scraper对象创建超时:', {
-            elapsed: elapsed + 'ms',
-            timeout: timeout + 'ms',
-            scraperLoaded,
-            scraperType: typeof scraper,
-            windowScraperType: typeof window.scraper,
-            windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('scraper')),
-            allWindowKeys: Object.keys(window).slice(0, 20) // 前20个键用于调试
-          });
-          clearInterval(checkScraper);
-          reject(new Error('Scraper加载超时：脚本已加载但对象未创建'));
-        } else {
-          // 每500ms输出一次状态
-          if (elapsed % 500 < checkInterval) {
+          return;
+        }
+        
+        // 如果还没有，等待一段时间（可能脚本执行需要时间）
+        let waitCount = 0;
+        const maxWait = 50; // 最多等待5秒（50 * 100ms）
+        
+        const checkScraper = setInterval(() => {
+          waitCount++;
+          const elapsed = Date.now() - checkStartTime;
+          
+          if (typeof window.scraper !== 'undefined' && window.scraper) {
+            console.log('[Content Script] Scraper对象已创建，耗时:', elapsed + 'ms', {
+              type: typeof window.scraper,
+              waitCount: waitCount,
+              location: 'window.scraper'
+            });
+            clearInterval(checkScraper);
+            resolve();
+          } else if (elapsed > timeout || waitCount > maxWait) {
+            console.error('[Content Script] Scraper对象创建超时:', {
+              elapsed: elapsed + 'ms',
+              timeout: timeout + 'ms',
+              waitCount: waitCount,
+              scraperLoaded,
+              windowScraperType: typeof window.scraper,
+              windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('scraper')),
+              scriptLoaded: scraperScript.readyState === 'complete'
+            });
+            clearInterval(checkScraper);
+            reject(new Error('Scraper加载超时：脚本已加载但对象未创建'));
+          } else if (waitCount % 5 === 0) {
+            // 每500ms输出一次状态
             console.log('[Content Script] 等待Scraper对象创建...', {
               elapsed: elapsed + 'ms',
-              scraperType: typeof scraper,
+              waitCount: waitCount,
               windowScraperType: typeof window.scraper
             });
           }
-        }
-      }, checkInterval);
+        }, 100);
+      }, 100); // 给脚本100ms执行时间
     };
     
     scraperScript.onerror = (error) => {
@@ -302,17 +320,26 @@ async function handleExtractData(request, sendResponse) {
     const loadTime = Date.now() - loadStartTime;
     console.log('[Content Script] Scraper加载完成，耗时:', loadTime + 'ms');
 
-    // 获取全局scraper对象（可能在window上）
-    const actualScraper = window.scraper || scraper;
+    // 获取全局scraper对象（应该已经在window上）
+    const actualScraper = window.scraper;
     
-    if (typeof actualScraper === 'undefined') {
+    if (!actualScraper || typeof actualScraper !== 'object') {
       console.error('[Content Script] Scraper对象未定义:', {
         scraperLoaded,
-        scraperType: typeof scraper,
         windowScraperType: typeof window.scraper,
-        windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('scraper'))
+        windowScraperValue: window.scraper,
+        windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('scraper')),
+        hasCollectCreatorData: window.scraper && typeof window.scraper.collectCreatorData
       });
-      throw new Error('数据抓取模块未加载');
+      throw new Error('数据抓取模块未加载：window.scraper未定义');
+    }
+
+    if (typeof actualScraper.collectCreatorData !== 'function') {
+      console.error('[Content Script] Scraper对象无效:', {
+        actualScraper,
+        methods: Object.keys(actualScraper)
+      });
+      throw new Error('Scraper对象缺少collectCreatorData方法');
     }
 
     console.log('[Content Script] 开始采集达人数据...');
