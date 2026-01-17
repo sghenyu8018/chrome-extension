@@ -389,3 +389,16 @@ class Scraper {
 
 // 创建全局实例
 const scraper = new Scraper();
+
+// 确保scraper对象在全局作用域中可访问
+// 在content script中，通过动态script标签加载的脚本需要显式挂载到window
+if (typeof window !== 'undefined') {
+  window.scraper = scraper;
+  console.log('[Scraper] Scraper对象已挂载到window:', typeof window.scraper);
+} else {
+  // 如果不在window环境中（比如在某些特殊上下文），使用self
+  if (typeof self !== 'undefined') {
+    self.scraper = scraper;
+    console.log('[Scraper] Scraper对象已挂载到self:', typeof self.scraper);
+  }
+}

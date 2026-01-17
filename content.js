@@ -6,13 +6,18 @@ let scraperLoaded = false;
 
 function loadScraper() {
   return new Promise((resolve, reject) => {
+    // 检查全局scraper对象（可能在window上）
+    const globalScraper = typeof window !== 'undefined' ? window.scraper : (typeof scraper !== 'undefined' ? scraper : undefined);
+    
     console.log('[Content Script] 开始加载Scraper...', {
       scraperLoaded,
       scraperExists: typeof scraper !== 'undefined',
+      windowScraperExists: typeof window.scraper !== 'undefined',
+      globalScraperExists: typeof globalScraper !== 'undefined',
       currentURL: window.location.href
     });
 
-    if (scraperLoaded && typeof scraper !== 'undefined') {
+    if (scraperLoaded && (typeof scraper !== 'undefined' || typeof window.scraper !== 'undefined')) {
       console.log('[Content Script] Scraper已加载，跳过重复加载');
       resolve();
       return;
@@ -32,11 +37,17 @@ function loadScraper() {
       console.log('[Content Script] scraper.js脚本加载完成');
       scraperLoaded = true;
       
-      // 等待scraper对象创建
+      // 等待scraper对象创建（检查多个可能的全局位置）
       const checkScraper = setInterval(() => {
         const elapsed = Date.now() - checkStartTime;
-        if (typeof scraper !== 'undefined') {
-          console.log('[Content Script] Scraper对象已创建，耗时:', elapsed + 'ms');
+        const hasScraper = typeof scraper !== 'undefined' || typeof window.scraper !== 'undefined';
+        
+        if (hasScraper) {
+          const actualScraper = window.scraper || scraper;
+          console.log('[Content Script] Scraper对象已创建，耗时:', elapsed + 'ms', {
+            type: typeof actualScraper,
+            location: window.scraper ? 'window.scraper' : 'scraper'
+          });
           clearInterval(checkScraper);
           resolve();
         } else if (elapsed > timeout) {
@@ -45,7 +56,9 @@ function loadScraper() {
             timeout: timeout + 'ms',
             scraperLoaded,
             scraperType: typeof scraper,
-            windowKeys: Object.keys(window).filter(k => k.includes('scraper'))
+            windowScraperType: typeof window.scraper,
+            windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('scraper')),
+            allWindowKeys: Object.keys(window).slice(0, 20) // 前20个键用于调试
           });
           clearInterval(checkScraper);
           reject(new Error('Scraper加载超时：脚本已加载但对象未创建'));
@@ -54,7 +67,8 @@ function loadScraper() {
           if (elapsed % 500 < checkInterval) {
             console.log('[Content Script] 等待Scraper对象创建...', {
               elapsed: elapsed + 'ms',
-              scraperType: typeof scraper
+              scraperType: typeof scraper,
+              windowScraperType: typeof window.scraper
             });
           }
         }
@@ -288,10 +302,14 @@ async function handleExtractData(request, sendResponse) {
     const loadTime = Date.now() - loadStartTime;
     console.log('[Content Script] Scraper加载完成，耗时:', loadTime + 'ms');
 
-    if (typeof scraper === 'undefined') {
+    // 获取全局scraper对象（可能在window上）
+    const actualScraper = window.scraper || scraper;
+    
+    if (typeof actualScraper === 'undefined') {
       console.error('[Content Script] Scraper对象未定义:', {
         scraperLoaded,
         scraperType: typeof scraper,
+        windowScraperType: typeof window.scraper,
         windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('scraper'))
       });
       throw new Error('数据抓取模块未加载');
@@ -299,7 +317,7 @@ async function handleExtractData(request, sendResponse) {
 
     console.log('[Content Script] 开始采集达人数据...');
     const collectStartTime = Date.now();
-    const data = await scraper.collectCreatorData({
+    const data = await actualScraper.collectCreatorData({
       collectVideos: request.collectVideos !== false,
       scrollToLoad: request.scrollToLoad || false,
       maxScrolls: request.maxScrolls || 5,
