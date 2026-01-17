@@ -1,7 +1,11 @@
 // Background Service Worker
 // 处理消息、管理采集任务、调用数据库存储
 
-// 加载数据库模块
+// 静态导入SQL.js（必须在Service Worker启动时导入，不能动态导入）
+// 在Manifest V3中，importScripts必须在Service Worker注册时执行，不能动态执行
+importScripts('lib/sql-wasm.js');
+
+// 加载数据库模块（必须在SQL.js之后加载）
 importScripts('utils/database.js');
 
 // 初始化数据库

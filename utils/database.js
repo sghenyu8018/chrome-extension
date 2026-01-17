@@ -13,29 +13,35 @@ class Database {
       return this.SQL;
     }
 
-    // 在background script中
-    if (typeof importScripts !== 'undefined') {
-      try {
-        importScripts('https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js');
-        this.SQL = await initSqlJs({
-          locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${file}`
-        });
-        return this.SQL;
-      } catch (error) {
-        console.error('加载SQL.js失败:', error);
-        throw error;
-      }
-    }
-
-    // 在其他环境中，假设已经通过script标签加载
+    // 在Service Worker中，initSqlJs应该已经在background.js中通过importScripts加载
     if (typeof initSqlJs === 'undefined') {
-      throw new Error('SQL.js未加载，请先加载sql.js库');
+      throw new Error('SQL.js未加载。请确保background.js中已导入sql-wasm.js');
     }
 
-    this.SQL = await initSqlJs({
-      locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${file}`
-    });
-    return this.SQL;
+    // 配置locateFile以使用本地WASM文件
+    // 在Chrome扩展中，需要使用chrome.runtime.getURL获取资源路径
+    const locateFile = (file) => {
+      // 如果是WASM文件，使用本地文件
+      if (file === 'sql-wasm.wasm' || file === 'sql-wasm-debug.wasm') {
+        return chrome.runtime.getURL('lib/sql-wasm.wasm');
+      }
+      // 其他文件也尝试从本地加载，如果不存在则从CDN
+      try {
+        // 对于可能的其他文件，也尝试本地路径
+        return chrome.runtime.getURL(`lib/${file}`);
+      } catch (e) {
+        // 如果本地没有，回退到CDN（但通常只有WASM文件需要）
+        return `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${file}`;
+      }
+    };
+
+    try {
+      this.SQL = await initSqlJs({ locateFile });
+      return this.SQL;
+    } catch (error) {
+      console.error('初始化SQL.js失败:', error);
+      throw error;
+    }
   }
 
   // 初始化数据库
