@@ -6,38 +6,89 @@ let scraperLoaded = false;
 
 function loadScraper() {
   return new Promise((resolve, reject) => {
+    console.log('[Content Script] 开始加载Scraper...', {
+      scraperLoaded,
+      scraperExists: typeof scraper !== 'undefined',
+      currentURL: window.location.href
+    });
+
     if (scraperLoaded && typeof scraper !== 'undefined') {
+      console.log('[Content Script] Scraper已加载，跳过重复加载');
       resolve();
       return;
     }
 
     const scraperScript = document.createElement('script');
-    scraperScript.src = chrome.runtime.getURL('utils/scraper.js');
+    const scraperUrl = chrome.runtime.getURL('utils/scraper.js');
+    scraperScript.src = scraperUrl;
+    
+    console.log('[Content Script] 创建script标签，URL:', scraperUrl);
+
+    let checkStartTime = Date.now();
+    const timeout = 10000; // 增加到10秒
+    const checkInterval = 100; // 每100ms检查一次
+
     scraperScript.onload = function() {
+      console.log('[Content Script] scraper.js脚本加载完成');
       scraperLoaded = true;
+      
       // 等待scraper对象创建
       const checkScraper = setInterval(() => {
+        const elapsed = Date.now() - checkStartTime;
         if (typeof scraper !== 'undefined') {
+          console.log('[Content Script] Scraper对象已创建，耗时:', elapsed + 'ms');
           clearInterval(checkScraper);
           resolve();
+        } else if (elapsed > timeout) {
+          console.error('[Content Script] Scraper对象创建超时:', {
+            elapsed: elapsed + 'ms',
+            timeout: timeout + 'ms',
+            scraperLoaded,
+            scraperType: typeof scraper,
+            windowKeys: Object.keys(window).filter(k => k.includes('scraper'))
+          });
+          clearInterval(checkScraper);
+          reject(new Error('Scraper加载超时：脚本已加载但对象未创建'));
+        } else {
+          // 每500ms输出一次状态
+          if (elapsed % 500 < checkInterval) {
+            console.log('[Content Script] 等待Scraper对象创建...', {
+              elapsed: elapsed + 'ms',
+              scraperType: typeof scraper
+            });
+          }
         }
-      }, 50);
-      setTimeout(() => {
-        clearInterval(checkScraper);
-        if (typeof scraper === 'undefined') {
-          reject(new Error('Scraper加载超时'));
-        }
-      }, 5000);
+      }, checkInterval);
     };
-    scraperScript.onerror = () => {
-      reject(new Error('加载scraper.js失败'));
+    
+    scraperScript.onerror = (error) => {
+      console.error('[Content Script] 加载scraper.js失败:', {
+        error,
+        url: scraperUrl,
+        scriptSrc: scraperScript.src,
+        readyState: scraperScript.readyState
+      });
+      reject(new Error('加载scraper.js失败: ' + error.message));
     };
-    (document.head || document.documentElement).appendChild(scraperScript);
+
+    const appendTarget = document.head || document.documentElement;
+    console.log('[Content Script] 将script标签添加到DOM:', {
+      target: appendTarget.tagName,
+      hasHead: !!document.head,
+      hasDocumentElement: !!document.documentElement
+    });
+    
+    appendTarget.appendChild(scraperScript);
+    console.log('[Content Script] script标签已添加，等待加载...');
   });
 }
 
 // 预加载scraper
-loadScraper().catch(err => console.warn('预加载scraper失败:', err));
+loadScraper().then(() => {
+  console.log('[Content Script] Scraper预加载成功');
+}).catch(err => {
+  console.warn('[Content Script] 预加载scraper失败:', err);
+});
 
 // 等待页面加载完成
 let pageReady = false;
@@ -220,24 +271,60 @@ function listenForMessages() {
 
 // 处理数据提取请求
 async function handleExtractData(request, sendResponse) {
+  const startTime = Date.now();
+  console.log('[Content Script] 开始处理数据提取请求:', {
+    collectVideos: request.collectVideos,
+    scrollToLoad: request.scrollToLoad,
+    maxScrolls: request.maxScrolls,
+    videoLimit: request.videoLimit,
+    url: window.location.href
+  });
+
   try {
     // 确保scraper已加载
+    console.log('[Content Script] 检查Scraper加载状态...');
+    const loadStartTime = Date.now();
     await loadScraper();
+    const loadTime = Date.now() - loadStartTime;
+    console.log('[Content Script] Scraper加载完成，耗时:', loadTime + 'ms');
 
     if (typeof scraper === 'undefined') {
+      console.error('[Content Script] Scraper对象未定义:', {
+        scraperLoaded,
+        scraperType: typeof scraper,
+        windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('scraper'))
+      });
       throw new Error('数据抓取模块未加载');
     }
 
+    console.log('[Content Script] 开始采集达人数据...');
+    const collectStartTime = Date.now();
     const data = await scraper.collectCreatorData({
       collectVideos: request.collectVideos !== false,
       scrollToLoad: request.scrollToLoad || false,
       maxScrolls: request.maxScrolls || 5,
       videoLimit: request.videoLimit || 50
     });
+    const collectTime = Date.now() - collectStartTime;
+
+    console.log('[Content Script] 数据采集完成:', {
+      creator: data.creator ? '存在' : '不存在',
+      videoCount: data.videos ? data.videos.length : 0,
+      collectTime: collectTime + 'ms',
+      totalTime: (Date.now() - startTime) + 'ms'
+    });
 
     sendResponse({ success: true, data: data });
   } catch (error) {
-    console.error('提取数据失败:', error);
+    const totalTime = Date.now() - startTime;
+    console.error('[Content Script] 提取数据失败:', {
+      error: error.message,
+      stack: error.stack,
+      totalTime: totalTime + 'ms',
+      scraperLoaded,
+      scraperType: typeof scraper,
+      url: window.location.href
+    });
     sendResponse({ success: false, error: error.message });
   }
 }

@@ -12,14 +12,26 @@ importScripts('utils/database.js');
 let dbInitialized = false;
 
 async function initDatabase() {
-  if (dbInitialized) return;
+  if (dbInitialized) {
+    console.log('[Background] 数据库已初始化，跳过');
+    return;
+  }
+  
+  console.log('[Background] 开始初始化数据库...');
+  const startTime = Date.now();
   
   try {
     await db.init();
     dbInitialized = true;
-    console.log('数据库初始化成功');
+    const elapsed = Date.now() - startTime;
+    console.log('[Background] 数据库初始化成功，耗时:', elapsed + 'ms');
   } catch (error) {
-    console.error('数据库初始化失败:', error);
+    const elapsed = Date.now() - startTime;
+    console.error('[Background] 数据库初始化失败:', {
+      error: error.message,
+      stack: error.stack,
+      elapsed: elapsed + 'ms'
+    });
   }
 }
 
@@ -80,10 +92,19 @@ async function handleMessage(request, sender, sendResponse) {
 
 // 处理开始采集请求
 async function handleStartCollect(request, sender, sendResponse) {
+  const startTime = Date.now();
+  console.log('[Background] 收到开始采集请求:', {
+    tabId: sender.tab.id,
+    url: sender.tab.url,
+    timestamp: new Date().toISOString()
+  });
+
   try {
     // 确保数据库已初始化
+    console.log('[Background] 确保数据库已初始化...');
     await initDatabase();
 
+    console.log('[Background] 向content script发送提取数据请求...');
     // 向content script发送提取数据请求
     chrome.tabs.sendMessage(sender.tab.id, {
       action: 'extractData',
@@ -92,7 +113,14 @@ async function handleStartCollect(request, sender, sendResponse) {
       maxScrolls: 5,
       videoLimit: 50
     }, async (response) => {
+      const messageTime = Date.now() - startTime;
+      
       if (chrome.runtime.lastError) {
+        console.error('[Background] 无法与页面通信:', {
+          error: chrome.runtime.lastError.message,
+          tabId: sender.tab.id,
+          elapsed: messageTime + 'ms'
+        });
         sendResponse({ 
           success: false, 
           error: '无法与页面通信: ' + chrome.runtime.lastError.message 
@@ -100,7 +128,17 @@ async function handleStartCollect(request, sender, sendResponse) {
         return;
       }
 
+      console.log('[Background] Content script响应:', {
+        success: response?.success,
+        hasData: !!response?.data,
+        elapsed: messageTime + 'ms'
+      });
+
       if (!response || !response.success) {
+        console.error('[Background] Content script返回失败:', {
+          error: response?.error,
+          response: response
+        });
         sendResponse({ 
           success: false, 
           error: response?.error || '提取数据失败' 
@@ -110,7 +148,14 @@ async function handleStartCollect(request, sender, sendResponse) {
 
       const { creator, videos } = response.data;
 
+      console.log('[Background] 解析响应数据:', {
+        hasCreator: !!creator,
+        creatorUserId: creator?.user_id,
+        videoCount: videos?.length || 0
+      });
+
       if (!creator || !creator.user_id) {
+        console.error('[Background] 达人信息无效:', { creator });
         sendResponse({ 
           success: false, 
           error: '无法提取达人信息' 
@@ -119,12 +164,21 @@ async function handleStartCollect(request, sender, sendResponse) {
       }
 
       try {
+        console.log('[Background] 开始保存达人信息...');
+        const saveStartTime = Date.now();
+        
         // 保存达人信息
         const creatorId = await db.upsertCreator(creator);
+        console.log('[Background] 达人信息已保存:', {
+          creatorId,
+          userId: creator.user_id,
+          username: creator.username
+        });
 
         // 保存作品信息
         let savedVideoCount = 0;
         if (videos && videos.length > 0) {
+          console.log('[Background] 开始保存', videos.length, '个作品...');
           const videosWithCreatorId = videos.map(video => ({
             ...video,
             creator_id: creatorId,
@@ -133,7 +187,18 @@ async function handleStartCollect(request, sender, sendResponse) {
           
           await db.insertVideos(videosWithCreatorId);
           savedVideoCount = videos.length;
+          console.log('[Background] 作品信息已保存:', savedVideoCount, '个');
         }
+
+        const totalTime = Date.now() - startTime;
+        const saveTime = Date.now() - saveStartTime;
+
+        console.log('[Background] 采集完成:', {
+          creatorId,
+          videoCount: savedVideoCount,
+          saveTime: saveTime + 'ms',
+          totalTime: totalTime + 'ms'
+        });
 
         sendResponse({ 
           success: true, 
@@ -142,7 +207,12 @@ async function handleStartCollect(request, sender, sendResponse) {
           message: `成功保存达人信息和 ${savedVideoCount} 个作品` 
         });
       } catch (dbError) {
-        console.error('保存数据失败:', dbError);
+        const totalTime = Date.now() - startTime;
+        console.error('[Background] 保存数据失败:', {
+          error: dbError.message,
+          stack: dbError.stack,
+          totalTime: totalTime + 'ms'
+        });
         sendResponse({ 
           success: false, 
           error: '保存数据失败: ' + dbError.message 

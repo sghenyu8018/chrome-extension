@@ -307,11 +307,19 @@ class Scraper {
 
   // 主采集方法
   async collectCreatorData(options = {}) {
+    const startTime = Date.now();
+    console.log('[Scraper] 开始采集达人数据:', {
+      options,
+      url: window.location.href
+    });
+
     if (this.isCollecting) {
+      console.error('[Scraper] 采集任务正在进行中');
       throw new Error('采集任务正在进行中');
     }
 
     if (!this.isUserProfilePage()) {
+      console.error('[Scraper] 当前页面不是用户主页:', window.location.href);
       throw new Error('当前页面不是用户主页');
     }
 
@@ -319,8 +327,20 @@ class Scraper {
 
     try {
       // 提取达人信息
+      console.log('[Scraper] 开始提取达人信息...');
+      const creatorStartTime = Date.now();
       const creatorInfo = this.extractCreatorInfo();
+      const creatorTime = Date.now() - creatorStartTime;
+      
+      console.log('[Scraper] 达人信息提取完成:', {
+        hasCreator: !!creatorInfo,
+        userId: creatorInfo?.user_id,
+        username: creatorInfo?.username,
+        time: creatorTime + 'ms'
+      });
+
       if (!creatorInfo || !creatorInfo.user_id) {
+        console.error('[Scraper] 无法提取达人信息:', { creatorInfo });
         throw new Error('无法提取达人信息，请确保在用户主页');
       }
 
@@ -328,17 +348,41 @@ class Scraper {
       let videos = [];
       if (options.collectVideos !== false) {
         if (options.scrollToLoad) {
+          console.log('[Scraper] 开始滚动加载更多作品...');
           await this.scrollToLoadMore(options.maxScrolls || 5);
         }
+        console.log('[Scraper] 开始提取作品列表...');
+        const videoStartTime = Date.now();
         videos = await this.extractVideos(options.videoLimit || 50);
+        const videoTime = Date.now() - videoStartTime;
+        console.log('[Scraper] 作品列表提取完成:', {
+          videoCount: videos.length,
+          time: videoTime + 'ms'
+        });
       }
+
+      const totalTime = Date.now() - startTime;
+      console.log('[Scraper] 采集完成:', {
+        creatorUserId: creatorInfo.user_id,
+        videoCount: videos.length,
+        totalTime: totalTime + 'ms'
+      });
 
       return {
         creator: creatorInfo,
         videos: videos
       };
+    } catch (error) {
+      const totalTime = Date.now() - startTime;
+      console.error('[Scraper] 采集失败:', {
+        error: error.message,
+        stack: error.stack,
+        totalTime: totalTime + 'ms'
+      });
+      throw error;
     } finally {
       this.isCollecting = false;
+      console.log('[Scraper] 采集任务结束');
     }
   }
 }
