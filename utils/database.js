@@ -25,14 +25,9 @@ class Database {
       if (file === 'sql-wasm.wasm' || file === 'sql-wasm-debug.wasm') {
         return chrome.runtime.getURL('lib/sql-wasm.wasm');
       }
-      // 其他文件也尝试从本地加载，如果不存在则从CDN
-      try {
-        // 对于可能的其他文件，也尝试本地路径
-        return chrome.runtime.getURL(`lib/${file}`);
-      } catch (e) {
-        // 如果本地没有，回退到CDN（但通常只有WASM文件需要）
-        return `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${file}`;
-      }
+      // 其他文件也使用本地路径
+      // 注意：不能使用CDN，因为违反CSP策略
+      return chrome.runtime.getURL(`lib/${file}`);
     };
 
     try {
