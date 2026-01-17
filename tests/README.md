@@ -18,6 +18,46 @@ npm run install-browsers
 npx playwright install chromium
 ```
 
+## 配置环境变量
+
+测试文件中的用户主页URL可以通过环境变量配置：
+
+### 方法1：使用 .env 文件（推荐）
+
+创建 `.env` 文件（项目根目录）：
+
+```bash
+DOUYIN_USER_PAGE_URL=https://www.douyin.com/user/YOUR_USER_ID
+```
+
+### 方法2：直接设置环境变量
+
+**Windows (PowerShell):**
+```powershell
+$env:DOUYIN_USER_PAGE_URL="https://www.douyin.com/user/YOUR_USER_ID"
+npm test
+```
+
+**Linux/Mac:**
+```bash
+export DOUYIN_USER_PAGE_URL="https://www.douyin.com/user/YOUR_USER_ID"
+npm test
+```
+
+### 方法3：在命令中直接设置
+
+**Windows (PowerShell):**
+```powershell
+$env:DOUYIN_USER_PAGE_URL="https://www.douyin.com/user/YOUR_USER_ID"; npm test
+```
+
+**Linux/Mac:**
+```bash
+DOUYIN_USER_PAGE_URL="https://www.douyin.com/user/YOUR_USER_ID" npm test
+```
+
+**注意**: 如果不设置环境变量，将使用默认的测试URL。
+
 ## 运行测试
 
 ### 运行所有测试

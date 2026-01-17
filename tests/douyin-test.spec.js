@@ -2,6 +2,10 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 
+// 从环境变量读取用户主页URL，如果没有设置则使用默认值
+const USER_PAGE_URL = process.env.DOUYIN_USER_PAGE_URL || 
+  'https://www.douyin.com/user/MS4wLjABAAAAObLqoivX9v17p8Mx6ehZ-8Jm2neeJg05i7gagKeCWtw?from_tab_name=main';
+
 /**
  * 抖音扩展功能测试
  */
@@ -26,10 +30,8 @@ test.describe('抖音达人信息采集扩展测试', () => {
   });
 
   test('应该能够打开抖音用户主页', async ({ page }) => {
-    // 使用一个示例用户主页URL（需要替换为真实的用户主页）
-    const userPageUrl = 'https://www.douyin.com/user/MS4wLjABAAAA';
-    
-    await page.goto(userPageUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // 使用环境变量中的用户主页URL
+    await page.goto(USER_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(3000);
     
     // 检查是否在用户主页
@@ -60,8 +62,7 @@ test.describe('抖音达人信息采集扩展测试', () => {
 
   test('应该显示采集按钮', async ({ page }) => {
     // 访问用户主页
-    const userPageUrl = 'https://www.douyin.com/user/MS4wLjABAAAA';
-    await page.goto(userPageUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(USER_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
     
     // 等待content script注入和按钮出现
     await page.waitForTimeout(5000);
@@ -83,8 +84,7 @@ test.describe('抖音达人信息采集扩展测试', () => {
   });
 
   test('应该能够点击采集按钮', async ({ page }) => {
-    const userPageUrl = 'https://www.douyin.com/user/MS4wLjABAAAA';
-    await page.goto(userPageUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(USER_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(5000);
     
     const collectButton = page.locator('#douyin-collector-btn');
@@ -144,8 +144,7 @@ test.describe('抖音达人信息采集扩展测试', () => {
   });
 
   test('应该能够提取页面数据', async ({ page }) => {
-    const userPageUrl = 'https://www.douyin.com/user/MS4wLjABAAAA';
-    await page.goto(userPageUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(USER_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(5000);
     
     // 尝试提取页面中的用户名

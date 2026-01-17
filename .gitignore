@@ -28,6 +28,10 @@ npm-debug.log*
 *.tmp
 *.temp
 
+# Environment variables
+.env
+.env.local
+
 # Chrome extension files (don't ignore, but note)
 # These should be committed:
 # - manifest.json
