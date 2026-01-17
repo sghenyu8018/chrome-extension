@@ -1,5 +1,11 @@
-# Node modules (if used)
+# Node modules
 node_modules/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+*.zip
 
 # OS files
 .DS_Store

@@ -1,0 +1,23 @@
+{
+  "name": "douyin-creator-collector",
+  "version": "1.0.0",
+  "description": "抖音达人信息采集Chrome扩展 - Playwright测试",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "install-browsers": "playwright install chromium"
+  },
+  "keywords": [
+    "chrome-extension",
+    "douyin",
+    "playwright",
+    "test"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}

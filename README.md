@@ -97,13 +97,36 @@ chrome-extension/
 - icon48.png (48x48)
 - icon128.png (128x128)
 
-可以使用在线工具生成，或使用占位图标。
+可以使用在线工具生成，或使用 `create_icons.py` 脚本生成。
 
 ### 调试
 
 1. 打开Chrome开发者工具
 2. 查看Console标签页查看日志
 3. 在扩展程序页面点击"检查视图"查看background和popup的日志
+
+### 测试
+
+项目包含Playwright自动化测试：
+
+```bash
+# 安装依赖
+npm install
+
+# 安装Playwright浏览器
+npm run install-browsers
+
+# 运行测试
+npm test
+
+# 可视化模式运行
+npm run test:headed
+
+# UI模式（推荐）
+npm run test:ui
+```
+
+详细测试说明请查看 `tests/README.md`
 
 ## 许可证
 
