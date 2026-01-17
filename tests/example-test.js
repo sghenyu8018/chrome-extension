@@ -8,10 +8,10 @@ const { test, expect } = require('@playwright/test');
 
 test('访问抖音并检查页面', async ({ page }) => {
   // 访问抖音首页
-  await page.goto('https://www.douyin.com');
+  await page.goto('https://www.douyin.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
   
-  // 等待页面加载完成
-  await page.waitForLoadState('networkidle');
+  // 等待页面加载
+  await page.waitForTimeout(3000);
   
   // 检查页面标题
   const title = await page.title();
